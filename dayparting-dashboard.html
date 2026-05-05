@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day Parting Dashboard · Amazon Orders</title>
+<link rel="icon" type="image/png" href="favicon-v3.png">
+<link rel="shortcut icon" href="favicon-v3.png">
+<link rel="apple-touch-icon" href="favicon-v3.png">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root {
+  --blue:#A7C7E7; --green:#BEE3DB; --purple:#D8B4E2; --peach:#FFD6C9;
+  --yellow:#FFF3B0; --bg:#FAFAFA; --text:#333333; --text-light:#7A8899;
+  --border:#E8EEF4; --card:#FFFFFF;
+  --shadow:0 2px 12px rgba(167,199,231,.18),0 1px 3px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 32px rgba(167,199,231,.22),0 2px 8px rgba(0,0,0,.08);
+  --radius:16px; --radius-sm:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.layout{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{width:232px;min-width:232px;background:var(--card);border-right:1px solid var(--border);padding:28px 0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:0 22px 24px;border-bottom:1px solid var(--border);font-size:16px;font-weight:800;letter-spacing:-.3px}
+.logo span{color:#A7C7E7}
+.logo sub{font-size:10px;font-weight:500;color:var(--text-light);display:block;margin-top:3px}
+.nav{padding:16px 10px;flex:1}
+.nav-label{font-size:10px;font-weight:700;color:var(--text-light);letter-spacing:1px;text-transform:uppercase;padding:0 12px 8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .15s;margin-bottom:2px}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:#EDF5FC;color:#4A8EC2;font-weight:600}
+.nav-item .icon{font-size:15px;width:20px;text-align:center}
+
+/* MAIN */
+.main{flex:1;overflow-x:hidden}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar h1{font-size:17px;font-weight:800;letter-spacing:-.3px}
+.topbar-right{display:flex;align-items:center;gap:10px}
+
+/* UPLOAD BUTTON in topbar */
+.btn-upload-top{
+  display:flex;align-items:center;gap:7px;
+  padding:8px 16px;border-radius:10px;
+  background:var(--yellow);border:none;font-family:inherit;
+  font-size:12.5px;font-weight:700;color:#7A6000;
+  cursor:pointer;transition:all .15s;
+}
+.btn-upload-top:hover{filter:brightness(.93);transform:translateY(-1px)}
+
+.content{padding:24px 28px}
+
+/* FILTERS */
+.filters-bar{display:flex;flex-wrap:wrap;gap:10px;background:var(--card);border-radius:var(--radius);padding:16px 18px;margin-bottom:20px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.filter-group{display:flex;flex-direction:column;gap:4px;min-width:120px;flex:1}
+.filter-group label{font-size:10px;font-weight:700;color:var(--text-light);letter-spacing:.6px;text-transform:uppercase}
+.filter-group select,.filter-group input{padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;font-size:12px;font-weight:500;color:var(--text);background:var(--bg);cursor:pointer;outline:none;transition:border-color .15s}
+.filter-group select:focus,.filter-group input:focus{border-color:var(--blue)}
+
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi-card{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0}
+.kpi-card:nth-child(1)::before{background:var(--blue)}
+.kpi-card:nth-child(2)::before{background:var(--green)}
+.kpi-card:nth-child(3)::before{background:var(--purple)}
+.kpi-card:nth-child(4)::before{background:var(--peach)}
+.kpi-label{font-size:10.5px;font-weight:700;color:var(--text-light);letter-spacing:.6px;text-transform:uppercase;margin-bottom:7px}
+.kpi-val{font-size:26px;font-weight:800;letter-spacing:-1px;color:var(--text)}
+.kpi-sub{font-size:11px;color:var(--text-light);margin-top:3px;font-weight:500}
+
+/* CARDS */
+.card{background:var(--card);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.card-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card-title .badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.4px}
+.card-desc{font-size:12px;color:var(--text-light);margin-bottom:14px;line-height:1.55}
+
+/* LAYOUT */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:20px}
+.mb20{margin-bottom:20px}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.data-table th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-light);letter-spacing:.5px;text-transform:uppercase;border-bottom:1.5px solid var(--border)}
+.data-table td{padding:9px 12px;color:var(--text);font-weight:500;border-bottom:1px solid #F3F5F8}
+.data-table tr:nth-child(even) td{background:#F8FAFB}
+.data-table tr:hover td{background:#EDF5FC}
+.data-table .num{font-family:'DM Mono',monospace;font-size:12px}
+
+/* HEATMAP */
+.hm-wrap{overflow-x:auto}
+.hm-table{width:100%;border-collapse:separate;border-spacing:3px;font-size:11px}
+.hm-table th{padding:5px 4px;font-size:9.5px;font-weight:700;color:var(--text-light);text-align:center;white-space:nowrap}
+.hm-table td{padding:5px 3px;text-align:center;border-radius:5px;font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600;min-width:28px}
+.hm-table .row-label{text-align:left;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;color:var(--text);padding-left:6px;white-space:nowrap;font-size:12px}
+.best-hour{outline:2.5px solid #E0B000;outline-offset:-2px}
+
+/* INSIGHTS PANEL */
+.insights-panel{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.insight-card{padding:16px 18px;border-radius:12px;border:1.5px solid}
+.insight-card.blue{background:#EDF5FC;border-color:#C0D8F0}
+.insight-card.yellow{background:#FFFAED;border-color:#F0D870}
+.insight-card.green{background:#EDF8F4;border-color:#A8D8CC}
+.insight-card.purple{background:#F5EEF9;border-color:#C8A8E0}
+.insight-card h4{font-size:10.5px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.insight-card .big{font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--text)}
+.insight-card .sub{font-size:12px;color:var(--text-light);margin-top:4px}
+.top-hours-list{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+.hour-item{display:flex;align-items:center;gap:10px}
+.hour-rank{width:22px;height:22px;border-radius:6px;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#8A6000;flex-shrink:0}
+.spark-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;flex:1}
+.spark-bar-fill{height:100%;border-radius:3px}
+
+/* MAP */
+#map-container{position:relative;width:100%}
+#us-map{width:100%;height:auto;display:block}
+.map-tooltip{position:absolute;background:white;border-radius:10px;padding:10px 14px;box-shadow:var(--shadow-lg);font-size:12.5px;pointer-events:none;display:none;border:1px solid var(--border);z-index:50;min-width:150px}
+.map-tooltip strong{display:block;font-size:14px;font-weight:700;margin-bottom:4px}
+.map-legend{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text-light)}
+.map-legend-bar{width:140px;height:10px;border-radius:5px;background:linear-gradient(to right,#FEF0E8,#C84010)}
+
+/* WW */
+.ww-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ww-card{padding:14px 16px;border-radius:10px}
+.ww-card.weekday{background:#EDF5FC;border:1.5px solid #C0D8F0}
+.ww-card.weekend{background:#F4EEF8;border:1.5px solid #D0B0E8}
+.ww-card h4{font-size:10.5px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.ww-stat{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.ww-sub{font-size:11px;color:var(--text-light);font-weight:500;margin-top:3px}
+
+/* UPLOAD MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(30,40,60,.45);display:flex;align-items:center;justify-content:center;z-index:500;display:none}
+.modal-bg.show{display:flex}
+.modal{background:white;border-radius:20px;padding:36px 32px;max-width:440px;width:90%;box-shadow:var(--shadow-lg);text-align:center}
+.modal h3{font-size:18px;font-weight:800;margin-bottom:8px}
+.modal p{font-size:13px;color:var(--text-light);margin-bottom:24px;line-height:1.55}
+.drop-zone{border:2px dashed #C0D8F0;border-radius:14px;padding:32px 20px;background:#F3F8FC;cursor:pointer;transition:all .2s;margin-bottom:16px}
+.drop-zone:hover{border-color:var(--blue);background:#EAF3FB}
+.drop-zone .dz-icon{font-size:36px;margin-bottom:10px}
+.drop-zone .dz-text{font-size:13px;color:var(--text-light)}
+.btn-cancel{padding:9px 22px;border-radius:10px;background:var(--bg);border:1.5px solid var(--border);font-family:inherit;font-size:13px;font-weight:600;color:var(--text-light);cursor:pointer}
+.btn-cancel:hover{border-color:#aaa}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(250,250,250,.85);display:none;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:14px}
+.loading-overlay.show{display:flex}
+.spinner{width:42px;height:42px;border:4px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+.loading-text{font-size:13px;font-weight:600;color:var(--text-light)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* VIEWS */
+.view{display:none}
+.view.active{display:block}
+
+/* MISC */
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.tz-note{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#4A8EC2;background:#EDF5FC;padding:3px 10px;border-radius:20px;margin-left:8px}
+
+@media(max-width:1100px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .insights-panel{grid-template-columns:1fr}
+}
+@media(max-width:780px){
+  .sidebar{display:none}
+  .content{padding:14px}
+  .topbar{padding:12px 16px}
+}
+
+@media print{
+  .sidebar,.topbar,.filters-bar{display:none!important}
+  .view{display:block!important;page-break-inside:avoid;margin-bottom:20px}
+  .card{page-break-inside:avoid}
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Loading data…</div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="modal-bg" id="upload-modal">
+  <div class="modal">
+    <h3>Upload New Order File</h3>
+    <p>Upload your Amazon order report (.txt or .csv).<br>Tab-delimited format is auto-detected.</p>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="dz-icon">📂</div>
+      <div class="dz-text">Click or drop your file here</div>
+    </div>
+    <input type="file" id="file-input" accept=".csv,.txt" style="display:none" onchange="handleFile(event)">
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<div class="layout">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">Day<span>Parting</span><sub>Amazon Analytics</sub></div>
+  <nav class="nav">
+    <div class="nav-label">Views</div>
+    <div class="nav-item active" onclick="switchView('overview',this)"><span class="icon">📊</span> Overview</div>
+    <div class="nav-item" onclick="switchView('heatmap',this)"><span class="icon">🔥</span> Hour Heatmap</div>
+    <div class="nav-item" onclick="switchView('geo',this)"><span class="icon">🗺️</span> Geography</div>
+    <div class="nav-item" onclick="switchView('products',this)"><span class="icon">📦</span> Products</div>
+    <div class="nav-item" onclick="switchView('channels',this)"><span class="icon">🔀</span> Channels</div>
+    <div class="nav-item" onclick="switchView('trends',this)"><span class="icon">📈</span> Trends</div>
+  </nav>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <h1>Day Parting Dashboard</h1>
+    <div class="topbar-right">
+      <button class="btn-upload-top" onclick="openModal()">📂 Upload New File</button>
+    </div>
+  </header>
+
+  <div class="content">
+    <!-- FILTERS -->
+    <div class="filters-bar">
+      <div class="filter-group">
+        <label>Timezone</label>
+        <select id="f-tz" onchange="applyFilters()">
+          <option value="-8">Pacific (UTC−8)</option>
+          <option value="-7">Mountain (UTC−7)</option>
+          <option value="-6">Central (UTC−6)</option>
+          <option value="-5" selected>Eastern (UTC−5)</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Date From</label>
+        <input type="date" id="f-date-from" onchange="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <label>Date To</label>
+        <input type="date" id="f-date-to" onchange="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <label>ASIN</label>
+        <select id="f-asin" onchange="applyFilters()"><option value="">All</option></select>
+      </div>
+      <div class="filter-group">
+        <label>SKU</label>
+        <select id="f-sku" onchange="applyFilters()"><option value="">All</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Fulfillment</label>
+        <select id="f-fulfillment" onchange="applyFilters()"><option value="">All</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Sales Channel</label>
+        <select id="f-channel" onchange="applyFilters()"><option value="">All</option></select>
+      </div>
+      <div class="filter-group">
+        <label>State</label>
+        <select id="f-state" onchange="applyFilters()"><option value="">All</option></select>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Orders</div>
+        <div class="kpi-val" id="kpi-orders">—</div>
+        <div class="kpi-sub">unique order IDs</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Units Sold</div>
+        <div class="kpi-val" id="kpi-units">—</div>
+        <div class="kpi-sub">total quantity</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Revenue</div>
+        <div class="kpi-val" id="kpi-revenue">—</div>
+        <div class="kpi-sub">item price × qty</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">AOV</div>
+        <div class="kpi-val" id="kpi-aov">—</div>
+        <div class="kpi-sub">revenue ÷ orders</div>
+      </div>
+    </div>
+
+    <!-- ═══ OVERVIEW ═══ -->
+    <div id="view-overview" class="view active">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Orders by Hour <span class="badge" style="background:var(--blue);color:#2A5F8A">24h</span><span class="tz-note" id="tz-badge-hour">🕐 Eastern</span></div>
+          <div class="card-desc">Order volume by local hour in selected timezone. Peak hours help identify best ad scheduling windows.</div>
+          <canvas id="chart-hour" height="190"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title">Orders by Day of Week <span class="badge" style="background:var(--green);color:#2D6A5A">7d</span><span class="tz-note" id="tz-badge-dow">🕐 Eastern</span></div>
+          <div class="card-desc">Weekday vs weekend order distribution. Weekdays shown in green, weekends in purple.</div>
+          <canvas id="chart-dow" height="190"></canvas>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Weekday vs Weekend Comparison</div>
+          <div class="card-desc">Compare order volume and revenue between weekdays (Mon–Fri) and weekends (Sat–Sun).</div>
+          <div class="ww-grid" id="ww-grid"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Best Converting Hours <span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:#8A6000;background:var(--yellow);padding:3px 9px;border-radius:20px;margin-left:4px">⭐ Top 5</span></div>
+          <div class="card-desc" id="best-hours-tz-note">Peak order hours in selected timezone — use these windows for ad bid boosts.</div>
+          <div class="top-hours-list" id="best-hours-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ HEATMAP ═══ -->
+    <div id="view-heatmap" class="view">
+      <div class="card mb20">
+        <div class="card-title">
+          Hourly Order Heatmap
+          <span class="badge" style="background:var(--peach);color:#A04C38">DOW × Hour</span>
+          <span class="tz-note" id="tz-badge-hm">🕐 Eastern</span>
+        </div>
+        <div class="card-desc" id="hm-desc">
+          Each cell shows order count for that day-of-week and hour combination in the selected timezone. 
+          Darker peach = more orders. <strong>Gold outlined cells</strong> are the peak hour for each day of the week.
+          Change the timezone filter above to instantly reproject all times — e.g. switching from Eastern to Pacific 
+          shifts every hour 3 hours earlier, revealing different peak windows for West Coast customers.
+        </div>
+        <div class="hm-wrap" id="heatmap-container"></div>
+
+        <!-- INSIGHTS -->
+        <div id="hm-insights" class="insights-panel"></div>
+      </div>
+    </div>
+
+    <!-- ═══ GEO ═══ -->
+    <div id="view-geo" class="view">
+      <div class="card mb20">
+        <div class="card-title">Orders by U.S. State <span class="badge" style="background:var(--peach);color:#A04C38">Choropleth</span></div>
+        <div class="card-desc">State-level order density. Hover any state for order count and revenue. All state name variants (abbreviations, full names, mixed case) are normalized automatically.</div>
+        <div id="map-container">
+          <svg id="us-map" viewBox="0 0 960 620" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="map-tooltip" id="map-tooltip"></div>
+        </div>
+        <div class="map-legend">
+          <span>Fewer orders</span>
+          <div class="map-legend-bar"></div>
+          <span>More orders</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top Cities</div>
+        <div class="card-desc">Top 25 cities by order volume. Useful for identifying high-density shipping zones.</div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>City</th><th>State</th><th>Orders</th><th>Revenue</th></tr></thead>
+            <tbody id="cities-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PRODUCTS ═══ -->
+    <div id="view-products" class="view">
+      <div class="card mb20">
+        <div class="card-title">Performance by ASIN</div>
+        <div class="card-desc">Revenue, orders, and AOV broken down by Amazon product ID. Bar shows relative revenue share.</div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>ASIN</th><th>Product</th><th>Orders</th><th>Units</th><th>Revenue</th><th>AOV</th><th>Share</th></tr></thead>
+            <tbody id="asin-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Performance by SKU</div>
+        <div class="card-desc">Revenue breakdown by SKU. Useful for variant-level analysis and inventory planning.</div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>SKU</th><th>Orders</th><th>Units</th><th>Revenue</th><th>AOV</th><th>Share</th></tr></thead>
+            <tbody id="sku-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ CHANNELS ═══ -->
+    <div id="view-channels" class="view">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Fulfillment Channel</div>
+          <div class="card-desc">Amazon FBA vs Merchant FBM order split. FBA orders are fulfilled by Amazon warehouses; Merchant orders are self-fulfilled.</div>
+          <canvas id="chart-fulfillment" height="220"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title">Sales Channel</div>
+          <div class="card-desc">Breakdown by where orders originated — Amazon.com storefront vs non-Amazon channels.</div>
+          <canvas id="chart-sales-channel" height="220"></canvas>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Fulfillment Breakdown</div>
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr><th>Channel</th><th>Orders</th><th>Units</th><th>Revenue</th><th>AOV</th></tr></thead>
+              <tbody id="fulfillment-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Sales Channel Breakdown</div>
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr><th>Channel</th><th>Orders</th><th>Units</th><th>Revenue</th><th>AOV</th></tr></thead>
+              <tbody id="saleschan-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TRENDS ═══ -->
+    <div id="view-trends" class="view">
+      <div class="card mb20">
+        <div class="card-title">Daily Orders Timeline <span class="badge" style="background:var(--blue);color:#2A5F8A">All Days</span></div>
+        <div class="card-desc">
+          Full order history plotted day-by-day. Use this to identify sales spikes (promotions, restocks, seasonal peaks), 
+          downward trends, or gaps in order flow. Each point is the total orders received on that calendar date.
+        </div>
+        <canvas id="chart-daily" height="190"></canvas>
+      </div>
+      <div class="card mb20">
+        <div class="card-title">Rolling 7-Day Hourly Pattern <span class="badge" style="background:var(--purple);color:#6A2D8A">Last 7 Days</span><span class="tz-note" id="tz-badge-rolling">🕐 Eastern</span></div>
+        <div class="card-desc" id="rolling-desc">
+          Aggregated order count by hour across the most recent 7 days of data, shown in the selected timezone. 
+          This reveals your <em>current</em> peak hours — useful for setting up time-based ad scheduling rules. 
+          Compare this to the full heatmap to spot whether your peak windows have shifted recently.
+        </div>
+        <canvas id="chart-rolling" height="190"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Daily Revenue Timeline</div>
+        <div class="card-desc">Revenue per day across the full dataset. Helps identify high-revenue days and correlate with external events like deal days, ad campaigns, or seasonal demand shifts.</div>
+        <canvas id="chart-daily-rev" height="190"></canvas>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+// ─────────────────────────────────────────
+// STATE NORMALIZER — merges all variants
+// ─────────────────────────────────────────
+const STATE_NAME_TO_ABBR = {
+  'alabama':'AL','alaska':'AK','arizona':'AZ','arkansas':'AR','california':'CA',
+  'colorado':'CO','connecticut':'CT','delaware':'DE','florida':'FL','georgia':'GA',
+  'hawaii':'HI','idaho':'ID','illinois':'IL','indiana':'IN','iowa':'IA','kansas':'KS',
+  'kentucky':'KY','louisiana':'LA','maine':'ME','maryland':'MD','massachusetts':'MA',
+  'michigan':'MI','minnesota':'MN','mississippi':'MS','missouri':'MO','montana':'MT',
+  'nebraska':'NE','nevada':'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM',
+  'new york':'NY','north carolina':'NC','north dakota':'ND','ohio':'OH','oklahoma':'OK',
+  'oregon':'OR','pennsylvania':'PA','rhode island':'RI','south carolina':'SC',
+  'south dakota':'SD','tennessee':'TN','texas':'TX','utah':'UT','vermont':'VT',
+  'virginia':'VA','washington':'WA','west virginia':'WV','wisconsin':'WI','wyoming':'WY',
+  'district of columbia':'DC','puerto rico':'PR','virgin islands':'VI',
+  'massachsetts':'MA','massachuesetts':'MA', // common misspellings
+};
+
+const VALID_ABBRS = new Set([
+  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY',
+  'LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND',
+  'OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY',
+  'DC','PR','VI','AE','GU','MP'
+]);
+
+function normalizeState(raw) {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+  const upper = trimmed.toUpperCase();
+  // Already a valid 2-letter abbr
+  if (VALID_ABBRS.has(upper)) return upper;
+  // Try full name lookup
+  const lower = trimmed.toLowerCase();
+  if (STATE_NAME_TO_ABBR[lower]) return STATE_NAME_TO_ABBR[lower];
+  // Partial match
+  for (const [name, abbr] of Object.entries(STATE_NAME_TO_ABBR)) {
+    if (lower.startsWith(name) || name.startsWith(lower)) return abbr;
+  }
+  return upper; // fallback
+}
+
+// ─────────────────────────────────────────
+// TIMEZONE HELPERS — foolproof
+// ─────────────────────────────────────────
+const TZ_NAMES = {'-8':'Pacific','-7':'Mountain','-6':'Central','-5':'Eastern'};
+
+function parsePurchaseDate(str) {
+  // Handles: 2026-04-21T14:58:42+00:00, 2026-04-21T14:58:42Z, etc.
+  // Always returns a UTC ms timestamp
+  if (!str) return null;
+  // Normalize to Z format
+  const s = str.trim().replace('+00:00','Z').replace(' ','T');
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.getTime();
+}
+
+function applyTzOffset(utcMs, tzOffset) {
+  // Returns a Date object whose UTC fields represent local time
+  return new Date(utcMs + tzOffset * 3600 * 1000);
+}
+
+function getLocalHour(utcMs, tzOffset) {
+  return applyTzOffset(utcMs, tzOffset).getUTCHours();
+}
+
+function getLocalDow(utcMs, tzOffset) {
+  // 0=Mon … 6=Sun
+  return (applyTzOffset(utcMs, tzOffset).getUTCDay() + 6) % 7;
+}
+
+function getLocalDateStr(utcMs, tzOffset) {
+  return applyTzOffset(utcMs, tzOffset).toISOString().slice(0, 10);
+}
+
+// ─────────────────────────────────────────
+// DATA & STATE
+// ─────────────────────────────────────────
+let rawData = [];
+let filteredData = [];
+let charts = {};
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAYS_FULL = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+// ─────────────────────────────────────────
+// FILE HANDLING
+// ─────────────────────────────────────────
+function openModal() { document.getElementById('upload-modal').classList.add('show'); }
+function closeModal() { document.getElementById('upload-modal').classList.remove('show'); }
+
+function handleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  closeModal();
+  showLoading('Parsing file…');
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    // Auto-detect delimiter
+    const firstLine = text.split('\n')[0];
+    const delimiter = firstLine.includes('\t') ? '\t' : ',';
+    Papa.parse(text, {
+      header: true, skipEmptyLines: true, delimiter,
+      complete: (r) => { processRawRows(r.data); },
+      error: () => { showLoading(false); alert('Error parsing file.'); }
+    });
+  };
+  reader.readAsText(file);
+}
+
+function showLoading(msg) {
+  const el = document.getElementById('loading');
+  if (msg) {
+    document.getElementById('loading-text').textContent = msg;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
+// ─────────────────────────────────────────
+// PROCESS RAW ROWS
+// ─────────────────────────────────────────
+function processRawRows(rows) {
+  rawData = rows
+    .map(r => {
+      const clean = {};
+      for (const [k, v] of Object.entries(r)) {
+        if (k) clean[k.trim()] = (v || '').trim();
+      }
+      // Support both embedded slim format and full CSV format
+      const id = clean['id'] || clean['amazon-order-id'] || '';
+      const date = clean['date'] || clean['purchase-date'] || '';
+      const utcMs = parsePurchaseDate(date);
+      if (!id || !utcMs) return null;
+      return {
+        id,
+        utcMs,
+        date,
+        status: clean['status'] || clean['order-status'] || '',
+        fc: clean['fc'] || clean['fulfillment-channel'] || '',
+        sc: clean['sc'] || clean['sales-channel'] || '',
+        name: clean['name'] || clean['product-name'] || '',
+        sku: clean['sku'] || '',
+        asin: clean['asin'] || '',
+        qty: parseFloat(clean['qty'] || clean['quantity'] || '') || 0,
+        price: parseFloat(clean['price'] || clean['item-price'] || '') || 0,
+        city: clean['city'] || clean['ship-city'] || '',
+        state: normalizeState(clean['state'] || clean['ship-state'] || ''),
+        zip: clean['zip'] || clean['ship-postal-code'] || '',
+      };
+    })
+    .filter(Boolean);
+
+  populateFilters();
+  applyFilters();
+  showLoading(false);
+}
+
+// ─────────────────────────────────────────
+// PROCESS EMBEDDED DATA
+// ─────────────────────────────────────────
+
+
+// ─────────────────────────────────────────
+// FILTERS
+// ─────────────────────────────────────────
+function getTzOffset() { return parseInt(document.getElementById('f-tz').value); }
+function getTzName() { return TZ_NAMES[String(getTzOffset())] || 'Local'; }
+
+function populateFilters() {
+  const tzOff = getTzOffset();
+  const dates = rawData.map(r => getLocalDateStr(r.utcMs, tzOff)).sort();
+  if (dates.length) {
+    document.getElementById('f-date-from').value = dates[0];
+    document.getElementById('f-date-to').value = dates[dates.length - 1];
+  }
+  const setOpts = (id, vals) => {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All</option>';
+    [...new Set(vals)].filter(Boolean).sort().forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v; sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+  };
+  setOpts('f-asin', rawData.map(r => r.asin));
+  setOpts('f-sku', rawData.map(r => r.sku));
+  setOpts('f-fulfillment', rawData.map(r => r.fc));
+  setOpts('f-channel', rawData.map(r => r.sc));
+  setOpts('f-state', rawData.map(r => r.state).filter(s => VALID_ABBRS.has(s)));
+}
+
+function applyFilters() {
+  const tzOff = getTzOffset();
+  const dateFrom = document.getElementById('f-date-from').value;
+  const dateTo = document.getElementById('f-date-to').value;
+  const fAsin = document.getElementById('f-asin').value;
+  const fSku = document.getElementById('f-sku').value;
+  const fFc = document.getElementById('f-fulfillment').value;
+  const fSc = document.getElementById('f-channel').value;
+  const fState = document.getElementById('f-state').value;
+
+  filteredData = rawData.filter(r => {
+    const ds = getLocalDateStr(r.utcMs, tzOff);
+    if (dateFrom && ds < dateFrom) return false;
+    if (dateTo && ds > dateTo) return false;
+    if (fAsin && r.asin !== fAsin) return false;
+    if (fSku && r.sku !== fSku) return false;
+    if (fFc && r.fc !== fFc) return false;
+    if (fSc && r.sc !== fSc) return false;
+    if (fState && r.state !== fState) return false;
+    return true;
+  });
+
+  renderAll();
+}
+
+// ─────────────────────────────────────────
+// RENDER ALL
+// ─────────────────────────────────────────
+function renderAll() {
+  updateTzBadges();
+  renderKPIs();
+  renderHourChart();
+  renderDowChart();
+  renderWeekdayWeekend();
+  renderBestHours();
+  renderHeatmap();
+  renderGeo();
+  renderProducts();
+  renderChannels();
+  renderTrends();
+}
+
+function updateTzBadges() {
+  const name = getTzName();
+  document.querySelectorAll('[id^="tz-badge-"]').forEach(el => {
+    el.textContent = '🕐 ' + name;
+  });
+  document.getElementById('best-hours-tz-note').textContent =
+    `Peak order hours in ${name} Time — use these windows for ad bid boosts.`;
+  document.getElementById('rolling-desc').innerHTML =
+    `Aggregated order count by hour across the most recent 7 days of data, shown in <strong>${name} Time</strong>. 
+    This reveals your <em>current</em> peak hours — useful for setting up time-based ad scheduling rules. 
+    Compare this to the full heatmap to spot whether your peak windows have shifted recently.`;
+}
+
+// ─────────────────────────────────────────
+// KPIs
+// ─────────────────────────────────────────
+function renderKPIs() {
+  const orders = new Set(filteredData.map(r => r.id)).size;
+  const units = filteredData.reduce((s, r) => s + r.qty, 0);
+  const rev = filteredData.reduce((s, r) => s + r.price * r.qty, 0);
+  const aov = orders ? rev / orders : 0;
+  document.getElementById('kpi-orders').textContent = orders.toLocaleString();
+  document.getElementById('kpi-units').textContent = units.toLocaleString();
+  document.getElementById('kpi-revenue').textContent = '$' + rev.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('kpi-aov').textContent = '$' + aov.toFixed(2);
+}
+
+// ─────────────────────────────────────────
+// CHARTS
+// ─────────────────────────────────────────
+function dc(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function hourlyAgg() {
+  const tzOff = getTzOffset();
+  const arr = Array(24).fill(0);
+  filteredData.forEach(r => arr[getLocalHour(r.utcMs, tzOff)]++);
+  return arr;
+}
+
+function dowAgg() {
+  const tzOff = getTzOffset();
+  const arr = Array(7).fill(0);
+  filteredData.forEach(r => arr[getLocalDow(r.utcMs, tzOff)]++);
+  return arr;
+}
+
+function renderHourChart() {
+  dc('hour');
+  const data = hourlyAgg();
+  const max = Math.max(...data);
+  charts['hour'] = new Chart(document.getElementById('chart-hour'), {
+    type:'bar',
+    data:{
+      labels: Array.from({length:24}, (_,i) => `${i}:00`),
+      datasets:[{ data, backgroundColor: data.map(v => v===max?'#FFD6C9':'#A7C7E7'), borderRadius:5, borderSkipped:false }]
+    },
+    options:{
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.raw} orders`}}},
+      scales:{
+        x:{grid:{display:false}, ticks:{font:{size:9.5,family:"'Plus Jakarta Sans'"}, color:'#9AA5B4'}},
+        y:{grid:{color:'#F0F4F8'}, ticks:{color:'#9AA5B4'}}
+      }
+    }
+  });
+}
+
+function renderDowChart() {
+  dc('dow');
+  const data = dowAgg();
+  charts['dow'] = new Chart(document.getElementById('chart-dow'), {
+    type:'bar',
+    data:{
+      labels: DAYS,
+      datasets:[{ data, backgroundColor:DAYS.map((_,i)=>i>=5?'#D8B4E2':'#BEE3DB'), borderRadius:5, borderSkipped:false }]
+    },
+    options:{
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false}, ticks:{font:{family:"'Plus Jakarta Sans'",weight:'600'}, color:'#9AA5B4'}},
+        y:{grid:{color:'#F0F4F8'}, ticks:{color:'#9AA5B4'}}
+      }
+    }
+  });
+}
+
+function renderWeekdayWeekend() {
+  const tzOff = getTzOffset();
+  const weekday = filteredData.filter(r => getLocalDow(r.utcMs, tzOff) < 5);
+  const weekend = filteredData.filter(r => getLocalDow(r.utcMs, tzOff) >= 5);
+  const wdO = new Set(weekday.map(r=>r.id)).size;
+  const weO = new Set(weekend.map(r=>r.id)).size;
+  const wdR = weekday.reduce((s,r)=>s+r.price*r.qty,0);
+  const weR = weekend.reduce((s,r)=>s+r.price*r.qty,0);
+  const fmt = n => '$'+n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  document.getElementById('ww-grid').innerHTML = `
+    <div class="ww-card weekday"><h4>Weekdays (Mon–Fri)</h4>
+      <div class="ww-stat">${wdO.toLocaleString()}</div>
+      <div class="ww-sub">orders · ${fmt(wdR)} revenue</div></div>
+    <div class="ww-card weekend"><h4>Weekend (Sat–Sun)</h4>
+      <div class="ww-stat">${weO.toLocaleString()}</div>
+      <div class="ww-sub">orders · ${fmt(weR)} revenue</div></div>`;
+}
+
+function renderBestHours() {
+  const data = hourlyAgg();
+  const indexed = data.map((v,i)=>({h:i,v})).sort((a,b)=>b.v-a.v);
+  const top5 = indexed.slice(0,5);
+  const max = indexed[0]?.v || 1;
+  const colors = ['#FFD6C9','#A7C7E7','#BEE3DB','#D8B4E2','#FFF3B0'];
+  document.getElementById('best-hours-list').innerHTML = top5.map((item,i) => `
+    <div class="hour-item">
+      <div class="hour-rank">${i+1}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700">${item.h}:00 – ${item.h+1}:00</div>
+        <div class="spark-bar" style="margin-top:5px">
+          <div class="spark-bar-fill" style="width:${(item.v/max*100).toFixed(0)}%;background:${colors[i]}"></div>
+        </div>
+      </div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--text-light);min-width:36px;text-align:right">${item.v}</div>
+    </div>`).join('');
+}
+
+// ─────────────────────────────────────────
+// HEATMAP + INSIGHTS
+// ─────────────────────────────────────────
+function renderHeatmap() {
+  const tzOff = getTzOffset();
+  const tzName = getTzName();
+  const matrix = Array.from({length:7}, () => Array(24).fill(0));
+  filteredData.forEach(r => {
+    const dow = getLocalDow(r.utcMs, tzOff);
+    const h = getLocalHour(r.utcMs, tzOff);
+    matrix[dow][h]++;
+  });
+
+  const allVals = matrix.flat();
+  const maxVal = Math.max(...allVals, 1);
+  const bestPerDay = matrix.map(row => { const m=Math.max(...row); return row.indexOf(m); });
+
+  // Heatmap table
+  let html = '<table class="hm-table"><thead><tr><th style="text-align:left;padding-left:8px">Day</th>';
+  for (let h=0;h<24;h++) html+=`<th>${h}</th>`;
+  html+='</tr></thead><tbody>';
+  matrix.forEach((row,di)=>{
+    html+=`<tr><td class="row-label">${DAYS[di]}</td>`;
+    row.forEach((val,hi)=>{
+      const t=val/maxVal;
+      const bg=interpColor('#FEF0E8','#C84010',t);
+      const tc=t>0.55?'#fff':'#444';
+      const isBest=hi===bestPerDay[di]&&val>0;
+      html+=`<td style="background:${bg};color:${tc}"${isBest?' class="best-hour"':''}>${val||''}</td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  document.getElementById('heatmap-container').innerHTML=html;
+
+  // Insights
+  const dowTotals = matrix.map((row,i)=>({day:DAYS_FULL[i],short:DAYS[i],total:row.reduce((a,b)=>a+b,0)}));
+  const topDay = [...dowTotals].sort((a,b)=>b.total-a.total)[0];
+  const bottomDay = [...dowTotals].sort((a,b)=>a.total-b.total)[0];
+  const hourTotals = Array(24).fill(0);
+  matrix.forEach(row=>row.forEach((v,h)=>hourTotals[h]+=v));
+  const topHours = hourTotals.map((v,h)=>({h,v})).sort((a,b)=>b.v-a.v);
+  const top3H = topHours.slice(0,3);
+
+  document.getElementById('hm-insights').innerHTML=`
+    <div class="insight-card blue">
+      <h4>🏆 Busiest Day (${tzName} Time)</h4>
+      <div class="big">${topDay.day}</div>
+      <div class="sub">${topDay.total.toLocaleString()} orders — ${((topDay.total/filteredData.length)*100).toFixed(1)}% of all orders</div>
+    </div>
+    <div class="insight-card yellow">
+      <h4>⭐ Top 3 Hours (${tzName} Time)</h4>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+        ${top3H.map((item,i)=>`
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;font-weight:800;color:#8A6000;background:var(--yellow);padding:2px 7px;border-radius:6px">#${i+1}</span>
+            <span style="font-size:13px;font-weight:700">${item.h}:00–${item.h+1}:00</span>
+            <span style="font-size:12px;color:var(--text-light);margin-left:auto">${item.v} orders</span>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="insight-card green">
+      <h4>📅 Peak Day + Hour Combo (${tzName} Time)</h4>
+      <div class="big">${topDay.short} @ ${bestPerDay[DAYS.indexOf(topDay.short)]}:00</div>
+      <div class="sub">Highest single cell in the heatmap — prime ad scheduling window</div>
+    </div>
+    <div class="insight-card purple">
+      <h4>📉 Slowest Day (${tzName} Time)</h4>
+      <div class="big">${bottomDay.day}</div>
+      <div class="sub">${bottomDay.total.toLocaleString()} orders — consider lower bids or budget pause</div>
+    </div>`;
+}
+
+function interpColor(c1,c2,t){
+  const p=s=>parseInt(s,16);
+  const r1=p(c1.slice(1,3)),g1=p(c1.slice(3,5)),b1=p(c1.slice(5,7));
+  const r2=p(c2.slice(1,3)),g2=p(c2.slice(3,5)),b2=p(c2.slice(5,7));
+  return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
+}
+
+// ─────────────────────────────────────────
+// GEO — proper SVG US map paths
+// ─────────────────────────────────────────
+// High-quality state paths approximated for SVG viewBox 960x620
+const STATE_DATA = {
+  WA:{path:"M 152,72 L 217,60 L 222,108 L 188,118 L 152,118 Z",cx:183,cy:88},
+  OR:{path:"M 152,118 L 222,108 L 230,196 L 152,204 Z",cx:188,cy:155},
+  CA:{path:"M 152,204 L 230,196 L 242,318 L 210,380 L 152,360 Z",cx:192,cy:285},
+  ID:{path:"M 222,60 L 290,52 L 302,148 L 262,188 L 230,196 L 222,108 Z",cx:260,cy:128},
+  NV:{path:"M 230,196 L 262,188 L 288,308 L 248,328 L 210,380 L 242,318 Z",cx:254,cy:272},
+  AZ:{path:"M 248,328 L 288,308 L 306,400 L 248,410 L 228,380 Z",cx:268,cy:362},
+  MT:{path:"M 222,60 L 374,44 L 380,148 L 302,148 L 290,52 Z",cx:302,cy:96},
+  WY:{path:"M 302,148 L 380,148 L 378,226 L 300,228 Z",cx:340,cy:188},
+  CO:{path:"M 300,228 L 378,226 L 376,296 L 298,298 Z",cx:338,cy:262},
+  NM:{path:"M 298,298 L 376,296 L 374,382 L 296,384 Z",cx:336,cy:340},
+  UT:{path:"M 262,188 L 302,148 L 300,228 L 248,328 L 288,308 L 262,188 Z",cx:276,cy:254},
+  ND:{path:"M 374,44 L 486,40 L 490,136 L 380,148 Z",cx:434,cy:92},
+  SD:{path:"M 380,148 L 490,136 L 494,216 L 378,226 Z",cx:437,cy:182},
+  NE:{path:"M 378,226 L 494,216 L 498,280 L 376,296 Z",cx:438,cy:258},
+  KS:{path:"M 376,296 L 498,280 L 500,340 L 376,342 Z",cx:438,cy:318},
+  OK:{path:"M 376,342 L 500,340 L 506,394 L 440,402 L 400,394 L 376,378 Z",cx:441,cy:368},
+  TX:{path:"M 376,378 L 400,394 L 440,402 L 506,394 L 516,478 L 450,510 L 390,478 L 360,440 Z",cx:438,cy:444},
+  MN:{path:"M 486,40 L 556,38 L 562,136 L 542,142 L 490,136 Z",cx:524,cy:88},
+  IA:{path:"M 490,136 L 542,142 L 548,204 L 494,216 Z",cx:520,cy:176},
+  MO:{path:"M 494,216 L 548,204 L 560,298 L 498,280 Z",cx:526,cy:254},
+  AR:{path:"M 498,280 L 560,298 L 564,360 L 500,340 Z",cx:532,cy:320},
+  LA:{path:"M 500,340 L 564,360 L 572,414 L 524,432 L 500,404 Z",cx:532,cy:386},
+  WI:{path:"M 542,142 L 556,38 L 582,50 L 606,118 L 590,148 L 548,148 Z",cx:574,cy:98},
+  IL:{path:"M 548,204 L 590,148 L 610,152 L 622,228 L 622,260 L 560,298 Z",cx:585,cy:222},
+  MI:{path:"M 582,50 L 640,42 L 652,110 L 628,140 L 606,118 Z",cx:617,cy:90},
+  IN:{path:"M 610,152 L 648,148 L 656,234 L 622,260 L 622,228 Z",cx:638,cy:200},
+  OH:{path:"M 648,148 L 700,138 L 714,222 L 674,240 L 656,234 Z",cx:680,cy:190},
+  KY:{path:"M 622,260 L 656,234 L 674,240 L 714,222 L 722,264 L 668,292 L 622,290 Z",cx:668,cy:262},
+  TN:{path:"M 622,290 L 668,292 L 722,264 L 740,290 L 712,310 L 622,318 Z",cx:680,cy:302},
+  MS:{path:"M 564,360 L 584,352 L 610,356 L 616,420 L 576,440 L 572,414 Z",cx:590,cy:396},
+  AL:{path:"M 610,356 L 652,350 L 660,426 L 616,434 L 616,420 Z",cx:636,cy:390},
+  GA:{path:"M 652,350 L 700,344 L 714,404 L 680,434 L 660,434 L 660,426 Z",cx:684,cy:388},
+  FL:{path:"M 660,434 L 680,434 L 714,404 L 730,450 L 712,494 L 670,524 L 648,496 L 652,462 Z",cx:688,cy:470},
+  SC:{path:"M 700,344 L 744,330 L 756,376 L 714,404 Z",cx:728,cy:364},
+  NC:{path:"M 668,292 L 722,264 L 740,290 L 790,276 L 798,308 L 756,322 L 744,330 L 700,344 L 722,310 L 712,310 Z",cx:730,cy:302},
+  VA:{path:"M 714,222 L 762,208 L 790,220 L 800,252 L 790,276 L 740,290 L 722,264 Z",cx:755,cy:248},
+  WV:{path:"M 714,222 L 756,234 L 762,270 L 740,290 L 722,264 Z",cx:738,cy:254},
+  PA:{path:"M 700,138 L 764,126 L 774,190 L 756,194 L 714,222 Z",cx:738,cy:172},
+  NY:{path:"M 700,138 L 764,126 L 800,100 L 822,116 L 800,148 L 774,190 Z",cx:762,cy:140},
+  MD:{path:"M 756,194 L 774,190 L 800,204 L 796,220 L 762,224 L 762,208 Z",cx:778,cy:210},
+  DE:{path:"M 774,190 L 800,204 L 796,218 L 772,218 Z",cx:786,cy:205},
+  NJ:{path:"M 800,148 L 822,138 L 832,168 L 810,180 L 800,166 Z",cx:816,cy:158},
+  CT:{path:"M 822,116 L 848,110 L 852,138 L 822,138 Z",cx:836,cy:126},
+  RI:{path:"M 848,110 L 862,108 L 864,128 L 848,130 Z",cx:856,cy:119},
+  MA:{path:"M 800,100 L 868,90 L 874,114 L 862,108 L 848,110 L 822,116 Z",cx:836,cy:102},
+  NH:{path:"M 830,72 L 856,68 L 860,96 L 848,110 L 822,116 L 822,90 Z",cx:840,cy:88},
+  VT:{path:"M 800,72 L 830,72 L 822,90 L 822,116 L 800,100 Z",cx:814,cy:90},
+  ME:{path:"M 830,72 L 890,48 L 904,92 L 856,100 L 856,68 Z",cx:866,cy:74},
+  DC:{path:"M 786,216 L 796,210 L 798,224 L 788,224 Z",cx:792,cy:218},
+  // Non-contiguous
+  AK:{path:"M 100,500 L 200,490 L 220,560 L 140,580 Z",cx:155,cy:535},
+  HI:{path:"M 280,560 L 340,554 L 344,584 L 280,590 Z",cx:312,cy:572},
+  PR:{path:"M 860,530 L 920,526 L 922,552 L 860,556 Z",cx:890,cy:541},
+};
+
+function renderGeo() {
+  const stateMap = {};
+  filteredData.forEach(r => {
+    const s = r.state;
+    if (!s || !STATE_DATA[s]) return;
+    if (!stateMap[s]) stateMap[s] = {orders:0, revenue:0};
+    stateMap[s].orders++;
+    stateMap[s].revenue += r.price * r.qty;
+  });
+
+  const maxOrders = Math.max(...Object.values(stateMap).map(v=>v.orders), 1);
+  const svg = document.getElementById('us-map');
+  svg.innerHTML = '';
+
+  // Background
+  const bg = createSVGEl('rect');
+  Object.assign(bg, {});
+  bg.setAttribute('width','960'); bg.setAttribute('height','620');
+  bg.setAttribute('fill','#F0F6FB'); bg.setAttribute('rx','12');
+  svg.appendChild(bg);
+
+  // Label box for AK/HI
+  ['AK','HI','PR'].forEach(abbr => {
+    const box = createSVGEl('rect');
+    const pts = STATE_DATA[abbr].path.match(/[\d.]+,[\d.]+/g);
+    if (pts) {
+      const xs=pts.map(p=>+p.split(',')[0]), ys=pts.map(p=>+p.split(',')[1]);
+      const x=Math.min(...xs)-4, y=Math.min(...ys)-4, w=Math.max(...xs)-Math.min(...xs)+8, h=Math.max(...ys)-Math.min(...ys)+8;
+      box.setAttribute('x',x); box.setAttribute('y',y); box.setAttribute('width',w); box.setAttribute('height',h);
+      box.setAttribute('fill','none'); box.setAttribute('stroke','#C8DCE8'); box.setAttribute('stroke-width','1');
+      box.setAttribute('stroke-dasharray','4,3'); box.setAttribute('rx','4');
+      svg.appendChild(box);
+    }
+  });
+
+  // States
+  Object.entries(STATE_DATA).forEach(([abbr, info]) => {
+    const stats = stateMap[abbr] || {orders:0, revenue:0};
+    const intensity = stats.orders / maxOrders;
+    const fill = stats.orders > 0 ? interpColor('#FFE8D8','#C84010',Math.pow(intensity,.6)) : '#E2EBF2';
+    const stroke = '#FFFFFF';
+
+    const path = createSVGEl('path');
+    path.setAttribute('d', info.path);
+    path.setAttribute('fill', fill);
+    path.setAttribute('stroke', stroke);
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke-linejoin', 'round');
+    path.style.cursor = 'pointer';
+    path.style.transition = 'filter .12s';
+
+    path.addEventListener('mouseenter', (e) => {
+      path.style.filter = 'brightness(0.85)';
+      showMapTip(e, abbr, stats);
+    });
+    path.addEventListener('mousemove', (e) => showMapTip(e, abbr, stats));
+    path.addEventListener('mouseleave', () => {
+      path.style.filter = '';
+      document.getElementById('map-tooltip').style.display = 'none';
+    });
+    svg.appendChild(path);
+
+    // State label
+    const text = createSVGEl('text');
+    text.setAttribute('x', info.cx);
+    text.setAttribute('y', info.cy);
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('dominant-baseline','middle');
+    text.setAttribute('font-size', ['ME','NH','VT','MA','RI','CT','NJ','DE','MD','DC'].includes(abbr) ? '7' : '9');
+    text.setAttribute('font-weight','700');
+    text.setAttribute('fill', intensity > 0.45 ? '#fff' : '#5A7080');
+    text.setAttribute('font-family','Plus Jakarta Sans, sans-serif');
+    text.setAttribute('pointer-events','none');
+    text.textContent = abbr;
+    svg.appendChild(text);
+  });
+
+  // Cities table
+  const cityMap = {};
+  filteredData.forEach(r => {
+    const key = `${(r.city||'').toLowerCase()}|${r.state}`;
+    if (!cityMap[key]) cityMap[key]={city:r.city,state:r.state,orders:0,revenue:0};
+    cityMap[key].orders++;
+    cityMap[key].revenue+=r.price*r.qty;
+  });
+  const cities = Object.values(cityMap).sort((a,b)=>b.orders-a.orders).slice(0,25);
+  document.getElementById('cities-tbody').innerHTML = cities.map((c,i)=>`
+    <tr>
+      <td style="color:var(--text-light);font-size:11px;font-weight:700">${i+1}</td>
+      <td>${c.city||'—'}</td><td>${c.state||'—'}</td>
+      <td class="num">${c.orders.toLocaleString()}</td>
+      <td class="num">$${c.revenue.toFixed(2)}</td>
+    </tr>`).join('');
+}
+
+function createSVGEl(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+
+function showMapTip(e, abbr, stats) {
+  const tip = document.getElementById('map-tooltip');
+  const container = document.getElementById('map-container');
+  const rect = container.getBoundingClientRect();
+  tip.style.display='block';
+  tip.style.left=(e.clientX-rect.left+14)+'px';
+  tip.style.top=Math.max(0,e.clientY-rect.top-70)+'px';
+  tip.innerHTML=`<strong>${abbr}</strong>Orders: ${stats.orders.toLocaleString()}<br>Revenue: $${stats.revenue.toFixed(2)}`;
+}
+
+// ─────────────────────────────────────────
+// PRODUCTS
+// ─────────────────────────────────────────
+function renderProducts() {
+  const totalRev = filteredData.reduce((s,r)=>s+r.price*r.qty,0)||1;
+  const makeTable=(keyFn,nameFn,tbodyId,hasProd)=>{
+    const map={};
+    filteredData.forEach(r=>{
+      const k=keyFn(r);
+      if(!k)return;
+      if(!map[k])map[k]={key:k,name:nameFn(r),orders:new Set(),units:0,revenue:0};
+      map[k].orders.add(r.id); map[k].units+=r.qty; map[k].revenue+=r.price*r.qty;
+    });
+    const rows=Object.values(map).map(v=>({...v,orders:v.orders.size})).sort((a,b)=>b.revenue-a.revenue).slice(0,30);
+    const max=rows[0]?.revenue||1;
+    document.getElementById(tbodyId).innerHTML=rows.map(r=>`
+      <tr>
+        <td style="font-family:'DM Mono',monospace;font-size:11.5px">${r.key}</td>
+        ${hasProd?`<td style="font-size:12px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name||'—'}</td>`:''}
+        <td class="num">${r.orders.toLocaleString()}</td>
+        <td class="num">${r.units.toLocaleString()}</td>
+        <td class="num">$${r.revenue.toFixed(2)}</td>
+        <td class="num">$${(r.revenue/r.orders).toFixed(2)}</td>
+        <td style="min-width:70px"><div class="spark-bar"><div class="spark-bar-fill" style="width:${(r.revenue/max*100).toFixed(0)}%;background:var(--blue)"></div></div></td>
+      </tr>`).join('');
+  };
+  makeTable(r=>r.asin, r=>r.name, 'asin-tbody', true);
+  makeTable(r=>r.sku, r=>'', 'sku-tbody', false);
+}
+
+// ─────────────────────────────────────────
+// CHANNELS
+// ─────────────────────────────────────────
+function renderChannels() {
+  const agg=(field)=>{
+    const map={};
+    filteredData.forEach(r=>{
+      const k=r[field]||'Unknown';
+      if(!map[k])map[k]={key:k,orders:new Set(),units:0,revenue:0};
+      map[k].orders.add(r.id); map[k].units+=r.qty; map[k].revenue+=r.price*r.qty;
+    });
+    return Object.values(map).map(v=>({...v,orders:v.orders.size})).sort((a,b)=>b.orders-a.orders);
+  };
+  const fd=agg('fc'), sd=agg('sc');
+  const makeDonut=(canvasId,data,colors)=>{
+    dc(canvasId);
+    charts[canvasId]=new Chart(document.getElementById(canvasId),{
+      type:'doughnut',
+      data:{labels:data.map(d=>d.key),datasets:[{data:data.map(d=>d.orders),backgroundColor:colors,borderWidth:2,borderColor:'#fff'}]},
+      options:{plugins:{legend:{position:'bottom',labels:{font:{family:"'Plus Jakarta Sans'",weight:'600',size:12}}}},cutout:'62%'}
+    });
+  };
+  makeDonut('chart-fulfillment',fd,['#A7C7E7','#D8B4E2','#BEE3DB','#FFD6C9']);
+  makeDonut('chart-sales-channel',sd,['#BEE3DB','#A7C7E7','#FFD6C9','#D8B4E2']);
+  const makeTable=(data,id)=>{
+    document.getElementById(id).innerHTML=data.map(r=>`
+      <tr><td>${r.key}</td><td class="num">${r.orders.toLocaleString()}</td>
+      <td class="num">${r.units.toLocaleString()}</td>
+      <td class="num">$${r.revenue.toFixed(2)}</td>
+      <td class="num">$${(r.revenue/Math.max(r.orders,1)).toFixed(2)}</td></tr>`).join('');
+  };
+  makeTable(fd,'fulfillment-tbody'); makeTable(sd,'saleschan-tbody');
+}
+
+// ─────────────────────────────────────────
+// TRENDS
+// ─────────────────────────────────────────
+function renderTrends() {
+  const tzOff = getTzOffset();
+  // Daily orders + revenue
+  const dailyOrders={}, dailyRev={};
+  filteredData.forEach(r=>{
+    const ds=getLocalDateStr(r.utcMs,tzOff);
+    dailyOrders[ds]=(dailyOrders[ds]||0)+1;
+    dailyRev[ds]=(dailyRev[ds]||0)+r.price*r.qty;
+  });
+  const dates=Object.keys(dailyOrders).sort();
+
+  dc('daily');
+  charts['daily']=new Chart(document.getElementById('chart-daily'),{
+    type:'line',
+    data:{labels:dates,datasets:[{label:'Orders',data:dates.map(d=>dailyOrders[d]),
+      borderColor:'#A7C7E7',backgroundColor:'rgba(167,199,231,.15)',borderWidth:2.5,tension:.4,fill:true,pointRadius:2.5,pointBackgroundColor:'#A7C7E7'}]},
+    options:{plugins:{legend:{labels:{font:{family:"'Plus Jakarta Sans'",weight:'600'}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9.5},color:'#9AA5B4',maxTicksLimit:14}},
+              y:{grid:{color:'#F0F4F8'},ticks:{color:'#9AA5B4'}}}}
+  });
+
+  dc('daily-rev');
+  charts['daily-rev']=new Chart(document.getElementById('chart-daily-rev'),{
+    type:'line',
+    data:{labels:dates,datasets:[{label:'Revenue ($)',data:dates.map(d=>dailyRev[d]||0),
+      borderColor:'#D8B4E2',backgroundColor:'rgba(216,180,226,.15)',borderWidth:2.5,tension:.4,fill:true,pointRadius:2.5,pointBackgroundColor:'#D8B4E2'}]},
+    options:{plugins:{legend:{labels:{font:{family:"'Plus Jakarta Sans'",weight:'600'}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9.5},color:'#9AA5B4',maxTicksLimit:14}},
+              y:{grid:{color:'#F0F4F8'},ticks:{color:'#9AA5B4',callback:v=>'$'+v.toFixed(0)}}}}
+  });
+
+  // Rolling 7-day hourly
+  const allDates=[...new Set(filteredData.map(r=>getLocalDateStr(r.utcMs,tzOff)))].sort();
+  const last7=new Set(allDates.slice(-7));
+  const hourly7=Array(24).fill(0);
+  filteredData.filter(r=>last7.has(getLocalDateStr(r.utcMs,tzOff))).forEach(r=>hourly7[getLocalHour(r.utcMs,tzOff)]++);
+
+  dc('rolling');
+  charts['rolling']=new Chart(document.getElementById('chart-rolling'),{
+    type:'line',
+    data:{labels:Array.from({length:24},(_,i)=>`${i}:00`),datasets:[{label:'Orders',data:hourly7,
+      borderColor:'#BEE3DB',backgroundColor:'rgba(190,227,219,.2)',borderWidth:2.5,tension:.4,fill:true,
+      pointBackgroundColor:hourly7.map(v=>v===Math.max(...hourly7)?'#E87040':'#BEE3DB'),pointRadius:4}]},
+    options:{plugins:{legend:{labels:{font:{family:"'Plus Jakarta Sans'",weight:'600'}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9.5},color:'#9AA5B4'}},
+              y:{grid:{color:'#F0F4F8'},ticks:{color:'#9AA5B4'}}}}
+  });
+}
+
+// ─────────────────────────────────────────
+// VIEW SWITCHER
+// ─────────────────────────────────────────
+function switchView(name, el) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  el.classList.add('active');
+  setTimeout(()=>{
+    if(name==='channels') renderChannels();
+    if(name==='trends') renderTrends();
+    if(name==='heatmap') renderHeatmap();
+  },50);
+}
+
+// ─────────────────────────────────────────
+// DRAG & DROP
+// ─────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  openModal();
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.style.borderColor='#A7C7E7'; });
+  dz.addEventListener('dragleave', ()=>{ dz.style.borderColor=''; });
+  dz.addEventListener('drop', e=>{
+    e.preventDefault(); dz.style.borderColor='';
+    const file = e.dataTransfer.files[0];
+    if (file) { document.getElementById('file-input').files = e.dataTransfer.files; handleFile({target:{files:e.dataTransfer.files}}); }
+  });
+});
+</script>
+</body>
+</html>
