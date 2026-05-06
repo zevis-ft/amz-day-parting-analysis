@@ -50,6 +50,15 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   cursor:pointer;transition:all .15s;
 }
 .btn-upload-top:hover{filter:brightness(.93);transform:translateY(-1px)}
+.btn-export-report{
+  display:flex;align-items:center;gap:7px;
+  padding:8px 16px;border-radius:10px;
+  background:var(--blue);border:none;font-family:inherit;
+  font-size:12.5px;font-weight:700;color:#2A5F8A;
+  cursor:pointer;transition:all .15s;
+}
+.btn-export-report:hover{filter:brightness(.93);transform:translateY(-1px)}
+.btn-export-report:disabled{opacity:.45;cursor:not-allowed;transform:none}
 
 .content{padding:24px 28px}
 
@@ -221,6 +230,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   <header class="topbar">
     <h1>Day Parting Dashboard</h1>
     <div class="topbar-right">
+      <button class="btn-export-report" id="btn-export" onclick="exportReport()" disabled>📄 Export Report</button>
       <button class="btn-upload-top" onclick="openModal()">📂 Upload New File</button>
     </div>
   </header>
@@ -614,6 +624,9 @@ function processRawRows(rows) {
   populateFilters();
   applyFilters();
   showLoading(false);
+  // Enable export button once data is loaded
+  const exportBtn = document.getElementById('btn-export');
+  if (exportBtn) exportBtn.disabled = false;
 }
 
 // ─────────────────────────────────────────
@@ -1191,6 +1204,94 @@ function switchView(name, el) {
     if(name==='trends') renderTrends();
     if(name==='heatmap') renderHeatmap();
   },50);
+}
+
+// ─────────────────────────────────────────
+// EXPORT REPORT
+// Fetches own HTML source, injects current rawData + autorun,
+// hides upload/export UI → fully interactive standalone file
+// ─────────────────────────────────────────
+async function exportReport() {
+  if (!rawData.length) return;
+  const btn = document.getElementById('btn-export');
+  btn.disabled = true;
+  btn.textContent = '⏳ Building…';
+
+  try {
+    // 1. Grab the clean source HTML (works on file:// and GitHub Pages)
+    let src;
+    try {
+      const res = await fetch(location.href);
+      src = await res.text();
+    } catch(e) {
+      // Fallback: serialize current DOM (less clean but functional)
+      src = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    }
+
+    // 2. Serialize rawData safely — escape </script> to avoid parser break
+    const safeJSON = JSON.stringify(rawData)
+      .replace(/<\/script>/gi, '<\\/script>');   // guard against HTML parser
+
+    // 3. Build autorun block — injects data + fires dashboard on load
+    //    Uses single-line strings only (no template literals with newlines)
+    const autorun = [
+      '<script>',
+      'var REPORT_DATA=' + safeJSON + ';',
+      'document.addEventListener("DOMContentLoaded",function(){',
+      // Hide interactive controls not needed in fixed report
+      '  ["btn-export","btn-upload-top","upload-modal"].forEach(function(id){',
+      '    var el=document.getElementById(id);',
+      '    if(el)el.style.display="none";',
+      '  });',
+      // Also hide the topbar upload button by class
+      '  document.querySelectorAll(".btn-upload-top,.btn-export-report").forEach(function(el){el.style.display="none";});',
+      // Add a fixed "EXPORTED REPORT" stamp to topbar
+      '  var stamp=document.createElement("span");',
+      '  stamp.style.cssText="font-size:11px;font-weight:700;color:#4A8EC2;background:#EDF5FC;padding:4px 12px;border-radius:20px;";',
+      '  stamp.textContent="📄 Fixed Report · "+new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});',
+      '  var tb=document.querySelector(".topbar-right");',
+      '  if(tb)tb.insertBefore(stamp,tb.firstChild);',
+      // Block openModal from firing (no upload in exported report)
+      '  window.openModal=function(){};',
+      // Load data using processRawRows
+      '  processRawRows(REPORT_DATA);',
+      '  var dz=document.getElementById("drop-zone");',
+      '  if(dz){',
+      '    dz.addEventListener("dragover",function(e){e.preventDefault();});',
+      '    dz.addEventListener("drop",function(e){e.preventDefault();});',
+      '  }',
+      '});',
+      '<\/script>',   // escaped to avoid breaking the outer string
+    ].join('\n');
+
+    // 4. Remove any existing EMBEDDED_DATA or prior autorun injections
+    //    (prevents double-loading if re-exporting)
+    src = src.replace(/<script>\s*var REPORT_DATA=[\s\S]*?<\/script>/g, '');
+    src = src.replace(/<script>\s*const EMBEDDED_DATA=[\s\S]*?<\/script>/g, '');
+
+    // 5. Inject before </head>
+    src = src.replace('</head>', autorun + '\n</head>');
+
+    // 6. Generate filename with date + filter context
+    const tzName = getTzName().replace(' ','');
+    const dateFrom = document.getElementById('f-date-from').value || 'start';
+    const dateTo   = document.getElementById('f-date-to').value   || 'end';
+    const slug = ['dayparting-report', dateFrom, dateTo, tzName].join('_') + '.html';
+
+    // 7. Trigger download
+    const blob = new Blob([src], {type:'text/html;charset=utf-8'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = slug; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+  } catch(err) {
+    alert('Export failed: ' + err.message);
+    console.error(err);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '📄 Export Report';
 }
 
 // ─────────────────────────────────────────
