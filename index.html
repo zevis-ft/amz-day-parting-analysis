@@ -562,10 +562,11 @@ function handleFile(event) {
   if (!file) return;
   closeModal();
   showLoading('Parsing file…');
+  // Reset so same file can be re-uploaded
+  event.target.value = '';
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
-    // Auto-detect delimiter
     const firstLine = text.split('\n')[0];
     const delimiter = firstLine.includes('\t') ? '\t' : ',';
     Papa.parse(text, {
@@ -1298,7 +1299,7 @@ async function exportReport() {
 // DRAG & DROP
 // ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  openModal();
+  if (!rawData.length) openModal();
   const dz = document.getElementById('drop-zone');
   dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.style.borderColor='#A7C7E7'; });
   dz.addEventListener('dragleave', ()=>{ dz.style.borderColor=''; });
