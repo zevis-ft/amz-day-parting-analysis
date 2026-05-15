@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="favicon-v3.png">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
 <style>
 :root {
   --blue:#A7C7E7; --green:#BEE3DB; --purple:#D8B4E2; --peach:#FFD6C9;
@@ -187,6 +187,48 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style>
+<script>
+// Inline CSV/TSV parser — replaces PapaParse, handles quoted fields, tab and comma delimited
+var Papa = {
+  parse: function(text, opts) {
+    try {
+      var delim = opts.delimiter || ',';
+      var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+      var headers = Papa._split(lines[0], delim);
+      var data = [];
+      for (var i = 1; i < lines.length; i++) {
+        var line = lines[i];
+        if (!line.trim()) continue;
+        var vals = Papa._split(line, delim);
+        var row = {};
+        for (var j = 0; j < headers.length; j++) {
+          row[headers[j]] = vals[j] !== undefined ? vals[j] : '';
+        }
+        data.push(row);
+      }
+      if (opts.complete) opts.complete({ data: data });
+    } catch(e) {
+      if (opts.error) opts.error(e);
+    }
+  },
+  _split: function(line, delim) {
+    var result = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (c === delim && !inQ) {
+        result.push(cur); cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    result.push(cur);
+    return result;
+  }
+};
+</script>
 </head>
 <body>
 
@@ -201,10 +243,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   <div class="modal">
     <h3>Upload New Order File</h3>
     <p>Upload your Amazon order report (.txt or .csv).<br>Tab-delimited format is auto-detected.</p>
-    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <label for="file-input" class="drop-zone" id="drop-zone">
       <div class="dz-icon">📂</div>
-      <div class="dz-text">Click or drop your file here</div>
-    </div>
+      <div class="dz-text">Click to browse or drag &amp; drop your file here<br><small style="font-size:11px;color:#aaa">.txt or .csv · tab or comma delimited</small></div>
+    </label>
     <input type="file" id="file-input" accept=".csv,.txt" style="display:none" onchange="handleFile(event)">
     <button class="btn-cancel" onclick="closeModal()">Cancel</button>
   </div>
@@ -567,12 +609,22 @@ function handleFile(event) {
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
+    // Detect delimiter: count tabs vs commas in first line
     const firstLine = text.split('\n')[0];
-    const delimiter = firstLine.includes('\t') ? '\t' : ',';
+    const tabCount = (firstLine.match(/\t/g)||[]).length;
+    const commaCount = (firstLine.match(/,/g)||[]).length;
+    const delimiter = tabCount >= commaCount ? '\t' : ',';
     Papa.parse(text, {
       header: true, skipEmptyLines: true, delimiter,
-      complete: (r) => { processRawRows(r.data); },
-      error: () => { showLoading(false); alert('Error parsing file.'); }
+      complete: (r) => {
+        if (!r.data || r.data.length === 0) {
+          showLoading(false);
+          alert('No rows found. Check that your file has headers and data rows.');
+          return;
+        }
+        processRawRows(r.data);
+      },
+      error: (err) => { showLoading(false); alert('Parse error: ' + (err.message||err)); }
     });
   };
   reader.readAsText(file);
@@ -1270,8 +1322,134 @@ async function exportReport() {
     src = src.replace(/<script>\s*var REPORT_DATA=[\s\S]*?<\/script>/g, '');
     src = src.replace(/<script>\s*const EMBEDDED_DATA=[\s\S]*?<\/script>/g, '');
 
-    // 5. Inject before </head>
-    src = src.replace('</head>', autorun + '\n</head>');
+    // 5. Inject before <script>
+// Inline CSV/TSV parser — replaces PapaParse, handles quoted fields, tab and comma delimited
+var Papa = {
+  parse: function(text, opts) {
+    try {
+      var delim = opts.delimiter || ',';
+      var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+      var headers = Papa._split(lines[0], delim);
+      var data = [];
+      for (var i = 1; i < lines.length; i++) {
+        var line = lines[i];
+        if (!line.trim()) continue;
+        var vals = Papa._split(line, delim);
+        var row = {};
+        for (var j = 0; j < headers.length; j++) {
+          row[headers[j]] = vals[j] !== undefined ? vals[j] : '';
+        }
+        data.push(row);
+      }
+      if (opts.complete) opts.complete({ data: data });
+    } catch(e) {
+      if (opts.error) opts.error(e);
+    }
+  },
+  _split: function(line, delim) {
+    var result = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (c === delim && !inQ) {
+        result.push(cur); cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    result.push(cur);
+    return result;
+  }
+};
+</script>
+</head>
+    src = src.replace('<script>
+// Inline CSV/TSV parser — replaces PapaParse, handles quoted fields, tab and comma delimited
+var Papa = {
+  parse: function(text, opts) {
+    try {
+      var delim = opts.delimiter || ',';
+      var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+      var headers = Papa._split(lines[0], delim);
+      var data = [];
+      for (var i = 1; i < lines.length; i++) {
+        var line = lines[i];
+        if (!line.trim()) continue;
+        var vals = Papa._split(line, delim);
+        var row = {};
+        for (var j = 0; j < headers.length; j++) {
+          row[headers[j]] = vals[j] !== undefined ? vals[j] : '';
+        }
+        data.push(row);
+      }
+      if (opts.complete) opts.complete({ data: data });
+    } catch(e) {
+      if (opts.error) opts.error(e);
+    }
+  },
+  _split: function(line, delim) {
+    var result = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (c === delim && !inQ) {
+        result.push(cur); cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    result.push(cur);
+    return result;
+  }
+};
+</script>
+</head>', autorun + '\n<script>
+// Inline CSV/TSV parser — replaces PapaParse, handles quoted fields, tab and comma delimited
+var Papa = {
+  parse: function(text, opts) {
+    try {
+      var delim = opts.delimiter || ',';
+      var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+      var headers = Papa._split(lines[0], delim);
+      var data = [];
+      for (var i = 1; i < lines.length; i++) {
+        var line = lines[i];
+        if (!line.trim()) continue;
+        var vals = Papa._split(line, delim);
+        var row = {};
+        for (var j = 0; j < headers.length; j++) {
+          row[headers[j]] = vals[j] !== undefined ? vals[j] : '';
+        }
+        data.push(row);
+      }
+      if (opts.complete) opts.complete({ data: data });
+    } catch(e) {
+      if (opts.error) opts.error(e);
+    }
+  },
+  _split: function(line, delim) {
+    var result = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (c === delim && !inQ) {
+        result.push(cur); cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    result.push(cur);
+    return result;
+  }
+};
+</script>
+</head>');
 
     // 6. Generate filename with date + filter context
     const tzName = getTzName().replace(' ','');
@@ -1301,13 +1479,16 @@ async function exportReport() {
 document.addEventListener('DOMContentLoaded', () => {
   if (!rawData.length) openModal();
   const dz = document.getElementById('drop-zone');
-  dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.style.borderColor='#A7C7E7'; });
-  dz.addEventListener('dragleave', ()=>{ dz.style.borderColor=''; });
-  dz.addEventListener('drop', e=>{
-    e.preventDefault(); dz.style.borderColor='';
-    const file = e.dataTransfer.files[0];
-    if (file) { document.getElementById('file-input').files = e.dataTransfer.files; handleFile({target:{files:e.dataTransfer.files}}); }
-  });
+  if (dz) {
+    dz.addEventListener('dragover', e=>{ e.preventDefault(); e.stopPropagation(); dz.style.borderColor='#A7C7E7'; dz.style.background='#EAF3FB'; });
+    dz.addEventListener('dragleave', ()=>{ dz.style.borderColor=''; dz.style.background=''; });
+    dz.addEventListener('drop', e=>{
+      e.preventDefault(); e.stopPropagation();
+      dz.style.borderColor=''; dz.style.background='';
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile({target:{files:e.dataTransfer.files}});
+    });
+  }
 });
 </script>
 </body>
